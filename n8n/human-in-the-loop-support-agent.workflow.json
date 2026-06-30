@@ -1,0 +1,233 @@
+{
+  "name": "Human-in-the-Loop Support Agent - Webhook Ingest",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "support-ticket",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "c6d451ee-8e0e-45f3-8a63-0922c5c07a01",
+      "name": "Inbound Support Ticket",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "human-in-loop-support-ticket"
+    },
+    {
+      "parameters": {
+        "jsCode": "const incoming = $input.first().json;\nconst body = incoming.body && typeof incoming.body === 'object' ? incoming.body : incoming;\nconst rawSource = String(body.source || body.channel || body.rawSource || 'webhook').trim();\nconst normalizedSource = rawSource.toLowerCase().replace(/[_-]+/g, ' ');\nconst directSources = ['webhook', 'gmail', 'zendesk', 'intercom', 'lead_form', 'demo'];\nlet source = directSources.includes(normalizedSource) ? normalizedSource : 'webhook';\n\nif (source === 'webhook' && /lead|contact|form|website|sales|pricing/.test(normalizedSource)) {\n  source = 'lead_form';\n}\n\nreturn [\n  {\n    json: {\n      customerName: body.customerName || body.name || 'Unknown Customer',\n      customerEmail: body.customerEmail || body.email || 'customer@example.com',\n      subject: body.subject || 'Inbound support request',\n      body: body.body || body.message || body.text || 'No body provided.',\n      source,\n      metadata: {\n        n8nExecutionId: $execution.id,\n        receivedAt: new Date().toISOString(),\n        rawSource,\n        channel: body.channel || rawSource,\n        routedBy: 'n8n-human-in-the-loop-workflow'\n      }\n    }\n  }\n];"
+      },
+      "id": "417c2935-2419-42cf-823e-420379785a6b",
+      "name": "Normalize Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [250, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{($env.APP_BASE_URL || 'http://localhost:3000') + '/api/tickets/ingest'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-webhook-secret",
+              "value": "={{$env.N8N_WEBHOOK_SECRET || ''}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "fbbdcb24-607f-4c5a-bf9f-9c82bd1b446b",
+      "name": "Create Ticket In App",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{($env.APP_BASE_URL || 'http://localhost:3000') + '/api/tickets/' + $json.ticket.id + '/draft'}}",
+        "sendBody": false,
+        "options": {}
+      },
+      "id": "1d935235-31de-4a43-bd7c-853a543c157a",
+      "name": "Classify + Draft",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [790, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const drafted = $input.first().json;\nconst ticket = drafted.ticket || drafted;\nconst priority = ticket.priority || 'normal';\nconst sentiment = ticket.sentiment || 'neutral';\nconst notifyReviewer = ['high', 'urgent'].includes(priority) || ['frustrated', 'angry'].includes(sentiment);\nconst reason = notifyReviewer\n  ? `Priority ${priority} and sentiment ${sentiment} should notify a human reviewer.`\n  : `Priority ${priority} and sentiment ${sentiment} can stay in the normal approval queue.`;\n\nreturn [\n  {\n    json: {\n      ...drafted,\n      reviewRouting: {\n        notifyReviewer,\n        reason\n      }\n    }\n  }\n];"
+      },
+      "id": "536b9e7f-0639-48d5-a82c-681a0d2f94e1",
+      "name": "Prepare Reviewer Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1060, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "a7f0bd64-1f37-42c5-b359-882a295474b1",
+              "leftValue": "={{$json.reviewRouting.notifyReviewer && Boolean($env.REVIEWER_WEBHOOK_URL)}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2c93d62f-0efb-4a7f-a11e-a83e19f71799",
+      "name": "Needs Reviewer Notification",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1330, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.REVIEWER_WEBHOOK_URL}}",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  event: 'review_required',\n  ticketId: $json.ticket.id,\n  dashboardUrl: ($env.APP_BASE_URL || 'http://localhost:3000'),\n  customerName: $json.ticket.customerName,\n  customerEmail: $json.ticket.customerEmail,\n  subject: $json.ticket.subject,\n  status: $json.ticket.status,\n  intent: $json.ticket.intent,\n  sentiment: $json.ticket.sentiment,\n  priority: $json.ticket.priority,\n  reason: $json.reviewRouting.reason,\n  n8nExecutionId: $json.ticket.metadata?.n8nExecutionId || $execution.id\n} }}",
+        "options": {}
+      },
+      "id": "6b93fbd3-271a-4a06-8428-fe6aa8c07af5",
+      "name": "Notify Reviewer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1600, -120],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$('Classify + Draft').first().json}}",
+        "options": {
+          "responseCode": 201
+        }
+      },
+      "id": "fa7da733-6f8d-49cd-9fea-9a29d0ed5d88",
+      "name": "Return Ticket",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1860, 0]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Inbound Support Ticket": {
+      "main": [
+        [
+          {
+            "node": "Normalize Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Payload": {
+      "main": [
+        [
+          {
+            "node": "Create Ticket In App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Ticket In App": {
+      "main": [
+        [
+          {
+            "node": "Classify + Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify + Draft": {
+      "main": [
+        [
+          {
+            "node": "Prepare Reviewer Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Reviewer Alert": {
+      "main": [
+        [
+          {
+            "node": "Needs Reviewer Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Reviewer Notification": {
+      "main": [
+        [
+          {
+            "node": "Notify Reviewer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Reviewer": {
+      "main": [
+        [
+          {
+            "node": "Return Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2aaf35ea-a0c8-49ab-946d-0d320ae8cc23",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "human-in-the-loop-support-agent"
+}

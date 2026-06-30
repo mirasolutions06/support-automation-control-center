@@ -1,0 +1,119 @@
+{
+  "version": "v2-demo-policy-pack-2026-06",
+  "policies": [
+    {
+      "id": "billing.duplicate_charge.refund_verification",
+      "title": "Duplicate charge refund verification",
+      "source": "Billing Policy Manual > Refunds > Duplicate Charges",
+      "updatedAt": "2026-06-01",
+      "summary": "Duplicate charges can be refunded after payment records are verified. Do not promise a refund before verification is complete.",
+      "guidance": [
+        "Acknowledge the customer's concern and urgency.",
+        "State that the team will verify payment records before confirming the refund.",
+        "If the duplicate charge is confirmed, say the extra transaction will be refunded.",
+        "Do not say the refund has already been processed unless a payment system confirms it."
+      ],
+      "escalation": [
+        "Escalate to billing operations when finance-close timing or duplicate renewal charges are mentioned."
+      ],
+      "intents": ["refund_request", "billing_issue"],
+      "priorities": ["high", "urgent"],
+      "keywords": ["refund", "duplicate", "charged twice", "double charge", "billing", "renewal", "finance"],
+      "tags": ["billing", "refund", "verification"],
+      "citation": "Refunds require payment verification before a customer-facing commitment is made."
+    },
+    {
+      "id": "support.incident_response.customer_escalation",
+      "title": "Customer incident escalation response",
+      "source": "Support Playbook > Incidents > Customer Escalations",
+      "updatedAt": "2026-06-01",
+      "summary": "For angry outage or incident complaints, acknowledge disruption, route to operations, provide a follow-up path, and avoid legal admissions.",
+      "guidance": [
+        "Acknowledge the operational impact in plain language.",
+        "Escalate to operations or a support lead for incident timeline review.",
+        "Commit to a specific follow-up path, not a generic apology.",
+        "Do not admit legal liability, negligence, breach, or fault."
+      ],
+      "escalation": [
+        "Escalate urgent angry complaints to operations immediately.",
+        "Mention incident timeline review when the customer asks what happened."
+      ],
+      "intents": ["angry_complaint", "technical_support"],
+      "priorities": ["urgent", "high"],
+      "keywords": ["furious", "angry", "unacceptable", "outage", "down", "incident", "missed", "escalate"],
+      "tags": ["incident", "escalation", "legal-safety"],
+      "citation": "Incident responses should escalate to operations and avoid legal admissions."
+    },
+    {
+      "id": "sales.safe_automation.discovery",
+      "title": "Safe automation lead qualification",
+      "source": "Sales Playbook > AI Automation > Discovery",
+      "updatedAt": "2026-06-01",
+      "summary": "AI automation leads should be routed to discovery. Emphasize human approval, integration mapping, and a controlled pilot before broader rollout.",
+      "guidance": [
+        "Confirm that human approval before send is the recommended rollout pattern.",
+        "Ask to map current inbox sources, routing rules, escalation paths, and approval owners.",
+        "Recommend a short discovery call before implementation.",
+        "Avoid promising pricing or implementation dates without scoping."
+      ],
+      "escalation": [
+        "Route qualified automation leads to a discovery call owner."
+      ],
+      "intents": ["lead_inquiry"],
+      "priorities": ["high", "normal"],
+      "keywords": ["automate", "automation", "safe ai", "approval", "rollout", "routing", "pricing", "vendors", "lead"],
+      "tags": ["sales", "lead", "automation"],
+      "citation": "Qualified automation leads should move to discovery before pricing or implementation commitments."
+    },
+    {
+      "id": "support.technical_triage.diagnostics",
+      "title": "Technical support triage",
+      "source": "Support Playbook > Technical Support > Diagnostics",
+      "updatedAt": "2026-06-01",
+      "summary": "Technical support replies should collect enough diagnostic context to route the issue without overpromising a fix.",
+      "guidance": [
+        "Ask for account, browser, timestamp, reproduction steps, and screenshots when useful.",
+        "Summarize the issue back to the customer.",
+        "Route to technical support when product behavior or dashboard access is involved.",
+        "Do not promise a fix before engineering validates the issue."
+      ],
+      "escalation": [
+        "Escalate to technical support when account access, dashboard availability, or repeated failures are mentioned."
+      ],
+      "intents": ["technical_support", "general_support"],
+      "priorities": ["normal", "high"],
+      "keywords": ["dashboard", "bug", "error", "broken", "login", "access", "technical", "issue", "not working"],
+      "tags": ["technical", "triage", "diagnostics"],
+      "citation": "Technical triage should collect diagnostics before promising a fix."
+    },
+    {
+      "id": "ops.human_approval.required",
+      "title": "Human approval before customer delivery",
+      "source": "AI Operations Policy > Customer Communications > Approval Gate",
+      "updatedAt": "2026-06-01",
+      "summary": "AI-generated customer replies must remain in human review until an authorized reviewer approves the final response.",
+      "guidance": [
+        "The AI may classify, summarize, and draft.",
+        "The AI must not send directly to customers.",
+        "A human reviewer must approve the final response before live email delivery.",
+        "Staged delivery is acceptable when the email provider is not configured."
+      ],
+      "escalation": [
+        "Route high-risk drafts to manual review before approval."
+      ],
+      "intents": [
+        "refund_request",
+        "billing_issue",
+        "angry_complaint",
+        "lead_inquiry",
+        "technical_support",
+        "general_support"
+      ],
+      "priorities": ["low", "normal", "high", "urgent"],
+      "keywords": ["approval", "review", "human", "send", "delivery", "ai"],
+      "tags": ["approval", "governance", "safety"],
+      "citation": "AI-generated customer messages require human approval before delivery.",
+      "alwaysInclude": true
+    }
+  ]
+}

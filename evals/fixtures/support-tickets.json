@@ -1,0 +1,210 @@
+{
+  "classificationCases": [
+    {
+      "name": "duplicate_refund",
+      "input": {
+        "customerName": "Priya Shah",
+        "customerEmail": "priya.shah@example.com",
+        "subject": "Refund request for duplicate charge",
+        "body": "I was charged twice for my Pro renewal this morning. Please refund the duplicate charge after you confirm it.",
+        "source": "webhook",
+        "metadata": {
+          "accountPlan": "Pro"
+        }
+      },
+      "expected": {
+        "intent": "refund_request",
+        "sentiment": "frustrated",
+        "priority": "high",
+        "safetySeverity": "none",
+        "policyIds": [
+          "billing.duplicate_charge.refund_verification",
+          "ops.human_approval.required"
+        ]
+      }
+    },
+    {
+      "name": "angry_outage",
+      "input": {
+        "customerName": "Marcus Reed",
+        "customerEmail": "marcus.reed@example.com",
+        "subject": "This outage has been unacceptable",
+        "body": "I am furious. Your dashboard went down twice and my team missed customer follow-ups. I need a real incident update.",
+        "source": "webhook",
+        "metadata": {
+          "accountPlan": "Business"
+        }
+      },
+      "expected": {
+        "intent": "angry_complaint",
+        "sentiment": "angry",
+        "priority": "urgent",
+        "safetySeverity": "none",
+        "policyIds": [
+          "support.incident_response.customer_escalation",
+          "ops.human_approval.required"
+        ]
+      }
+    },
+    {
+      "name": "lead_routing",
+      "input": {
+        "customerName": "Aisha Morgan",
+        "customerEmail": "aisha.morgan@example.com",
+        "subject": "Can you automate routing for our support inbox?",
+        "body": "We need a safe AI workflow to automate our support inbox, but every customer reply must be approved by our team first.",
+        "source": "lead_form",
+        "metadata": {
+          "companySize": "14-person operations team"
+        }
+      },
+      "expected": {
+        "intent": "lead_inquiry",
+        "sentiment": "positive",
+        "priority": "high",
+        "safetySeverity": "none",
+        "policyIds": [
+          "sales.safe_automation.discovery",
+          "ops.human_approval.required"
+        ]
+      }
+    },
+    {
+      "name": "pricing_lead_webhook",
+      "input": {
+        "customerName": "Loom Ready Client",
+        "customerEmail": "ops-lead@example.com",
+        "subject": "Need pricing before Friday",
+        "body": "We are comparing support automation vendors this week. We need a safe AI workflow where our team approves every reply before it goes to customers. Can you send implementation timing and pricing?",
+        "source": "webhook",
+        "metadata": {
+          "channel": "website contact form"
+        }
+      },
+      "expected": {
+        "intent": "lead_inquiry",
+        "sentiment": "positive",
+        "priority": "high",
+        "safetySeverity": "none",
+        "policyIds": [
+          "sales.safe_automation.discovery",
+          "ops.human_approval.required"
+        ]
+      }
+    },
+    {
+      "name": "neutral_integration_question",
+      "input": {
+        "customerName": "Devon Lee",
+        "customerEmail": "devon.lee@example.com",
+        "subject": "Question about Salesforce integration",
+        "body": "Can you help me connect the Salesforce integration and confirm which account fields are required?",
+        "source": "webhook",
+        "metadata": {
+          "accountPlan": "Starter"
+        }
+      },
+      "expected": {
+        "intent": "technical_support",
+        "sentiment": "neutral",
+        "priority": "normal",
+        "safetySeverity": "none"
+      }
+    },
+    {
+      "name": "frustrated_login_blocked",
+      "input": {
+        "customerName": "Nora Patel",
+        "customerEmail": "nora.patel@example.com",
+        "subject": "Still unable to log in",
+        "body": "I still cannot log in this morning and it is blocking our support handoffs. Please help us get access back.",
+        "source": "webhook",
+        "metadata": {
+          "accountPlan": "Business"
+        }
+      },
+      "expected": {
+        "intent": "technical_support",
+        "sentiment": "frustrated",
+        "priority": "high",
+        "safetySeverity": "none",
+        "policyIds": [
+          "support.technical_triage.diagnostics",
+          "ops.human_approval.required"
+        ]
+      }
+    }
+  ],
+  "safetyCases": [
+    {
+      "name": "blocks_refund_promise",
+      "ticket": {
+        "intent": "refund_request",
+        "priority": "high",
+        "sentiment": "frustrated"
+      },
+      "draft": "Hi Priya, we will process your refund today and the credit is guaranteed. Thanks for your patience.",
+      "expected": {
+        "passed": false,
+        "severity": "high",
+        "flags": ["refund_missing_verification", "refund_promise"]
+      }
+    },
+    {
+      "name": "blocks_legal_admission",
+      "ticket": {
+        "intent": "angry_complaint",
+        "priority": "urgent",
+        "sentiment": "angry"
+      },
+      "draft": "Hi Marcus, we admit full liability for the outage and our company was negligent. We will send an update soon.",
+      "expected": {
+        "passed": false,
+        "severity": "high",
+        "flags": ["legal_admission", "missing_escalation"]
+      }
+    },
+    {
+      "name": "blocks_angry_tone",
+      "ticket": {
+        "intent": "general_support",
+        "priority": "normal",
+        "sentiment": "frustrated"
+      },
+      "draft": "Calm down. As we already told you, this is not our problem and you should have checked your settings.",
+      "expected": {
+        "passed": false,
+        "severity": "high",
+        "flags": ["angry_tone"]
+      }
+    },
+    {
+      "name": "blocks_missing_escalation",
+      "ticket": {
+        "intent": "angry_complaint",
+        "priority": "urgent",
+        "sentiment": "angry"
+      },
+      "draft": "Hi Marcus, I am sorry this happened. We understand the disruption and will follow up when we know more.",
+      "expected": {
+        "passed": false,
+        "severity": "high",
+        "flags": ["missing_escalation"]
+      }
+    },
+    {
+      "name": "allows_urgent_positive_lead",
+      "ticket": {
+        "intent": "lead_inquiry",
+        "priority": "urgent",
+        "sentiment": "positive"
+      },
+      "draft": "Hi Morgan, thanks for reaching out. We can help you evaluate safe AI support routing with human approval. A short discovery call would let us map your inbox sources, routing rules, and approval owners before discussing pricing.",
+      "expected": {
+        "passed": true,
+        "severity": "none",
+        "flags": []
+      }
+    }
+  ]
+}

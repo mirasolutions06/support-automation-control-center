@@ -1,0 +1,231 @@
+{
+  "id": "human-in-the-loop-support-agent-email-inbox",
+  "name": "Human-in-the-Loop Support Agent - Email Inbox Ingest",
+  "nodes": [
+    {
+      "parameters": {
+        "mailbox": "INBOX",
+        "postProcessAction": "read",
+        "downloadAttachments": false,
+        "format": "simple",
+        "options": {
+          "customEmailConfig": "[\"UNSEEN\"]",
+          "forceReconnect": 60
+        }
+      },
+      "id": "dfc791ef-19ec-46f3-a49f-e9da7d9e2a03",
+      "name": "Inbound Email",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const email = $input.first().json;\nconst fromText = String(email.from || 'Unknown Sender <customer@example.com>');\nconst fromMatch = fromText.match(/^(.*?)\\s*<([^>]+)>$/);\nconst customerName = (fromMatch?.[1] || fromText.split('@')[0] || 'Unknown Customer').replace(/^['\\\"]|['\\\"]$/g, '').trim();\nconst customerEmail = (fromMatch?.[2] || fromText.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i)?.[0] || 'customer@example.com').trim();\nconst body = String(email.textPlain || email.textHtml || 'No body provided.').replace(/<[^>]+>/g, ' ').replace(/\\s+\\n/g, '\\n').trim();\n\nreturn [\n  {\n    json: {\n      customerName: customerName || 'Unknown Customer',\n      customerEmail,\n      subject: email.subject || 'Inbound email support request',\n      body,\n      source: 'gmail',\n      metadata: {\n        n8nExecutionId: $execution.id,\n        receivedAt: new Date().toISOString(),\n        rawSource: 'email-inbox',\n        channel: 'gmail-imap',\n        emailFrom: email.from,\n        emailTo: email.to,\n        emailDate: email.date,\n        messageId: email.metadata?.['message-id'] || email.metadata?.messageId,\n        routedBy: 'n8n-email-inbox-workflow'\n      }\n    }\n  }\n];"
+      },
+      "id": "1fbb02be-fb58-4f71-a632-a652f700a4a3",
+      "name": "Normalize Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [280, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{($env.APP_BASE_URL || 'http://localhost:3000') + '/api/tickets/ingest'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-n8n-webhook-secret",
+              "value": "={{$env.N8N_WEBHOOK_SECRET || ''}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "c8a4f625-af9f-4ad2-9a9e-e88adafbfb7b",
+      "name": "Create Ticket In App",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{($env.APP_BASE_URL || 'http://localhost:3000') + '/api/tickets/' + $json.ticket.id + '/draft'}}",
+        "sendBody": false,
+        "options": {}
+      },
+      "id": "d3779750-1451-40d5-87d2-b0d186414d12",
+      "name": "Classify + Draft",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [840, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const drafted = $input.first().json;\nconst ticket = drafted.ticket || drafted;\nconst priority = ticket.priority || 'normal';\nconst sentiment = ticket.sentiment || 'neutral';\nconst notifyReviewer = ['high', 'urgent'].includes(priority) || ['frustrated', 'angry'].includes(sentiment);\nconst reason = notifyReviewer\n  ? `Priority ${priority} and sentiment ${sentiment} should notify a human reviewer.`\n  : `Priority ${priority} and sentiment ${sentiment} can stay in the normal approval queue.`;\n\nreturn [\n  {\n    json: {\n      ...drafted,\n      reviewRouting: {\n        notifyReviewer,\n        reason\n      }\n    }\n  }\n];"
+      },
+      "id": "39166317-8385-4671-a05a-6bc958f983ad",
+      "name": "Prepare Reviewer Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "bc5ad6c0-8e64-4e77-bbb4-bb524b46e29e",
+              "leftValue": "={{$json.reviewRouting.notifyReviewer && Boolean($env.REVIEWER_WEBHOOK_URL)}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c50ba36c-7927-4a6b-9735-541164d62702",
+      "name": "Needs Reviewer Notification",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1400, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.REVIEWER_WEBHOOK_URL}}",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  event: 'review_required',\n  ticketId: $json.ticket.id,\n  dashboardUrl: ($env.APP_BASE_URL || 'http://localhost:3000'),\n  customerName: $json.ticket.customerName,\n  customerEmail: $json.ticket.customerEmail,\n  subject: $json.ticket.subject,\n  status: $json.ticket.status,\n  intent: $json.ticket.intent,\n  sentiment: $json.ticket.sentiment,\n  priority: $json.ticket.priority,\n  reason: $json.reviewRouting.reason,\n  n8nExecutionId: $json.ticket.metadata?.n8nExecutionId || $execution.id\n} }}",
+        "options": {}
+      },
+      "id": "2f457f19-64bd-43fb-a476-1536858d8143",
+      "name": "Notify Reviewer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1680, -120],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "return [$input.first()];"
+      },
+      "id": "4d5b1f7e-b5a1-48bd-af3c-86170270eb1b",
+      "name": "Email Ticket Ready",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1960, 0]
+    }
+  ],
+  "connections": {
+    "Inbound Email": {
+      "main": [
+        [
+          {
+            "node": "Normalize Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Email": {
+      "main": [
+        [
+          {
+            "node": "Create Ticket In App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Ticket In App": {
+      "main": [
+        [
+          {
+            "node": "Classify + Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify + Draft": {
+      "main": [
+        [
+          {
+            "node": "Prepare Reviewer Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Reviewer Alert": {
+      "main": [
+        [
+          {
+            "node": "Needs Reviewer Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Reviewer Notification": {
+      "main": [
+        [
+          {
+            "node": "Notify Reviewer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Ticket Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Reviewer": {
+      "main": [
+        [
+          {
+            "node": "Email Ticket Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "versionId": "3b686ea9-47c7-436b-a76c-19f39a50e19c",
+  "triggerCount": 0,
+  "tags": []
+}

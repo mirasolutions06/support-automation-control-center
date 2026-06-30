@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Ticket {
+  id            String       @id @default(cuid())
+  customerName  String
+  customerEmail String
+  subject       String
+  body          String
+  source        String       @default("webhook")
+  status        String       @default("new")
+  intent        String       @default("general_support")
+  sentiment     String       @default("neutral")
+  priority      String       @default("normal")
+  aiDraft       String?
+  finalResponse String?
+  aiProvider    String?
+  aiModel       String?
+  sendProvider  String?
+  sendResult    String?
+  metadata      Json?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  auditEvents   AuditEvent[]
+
+  @@index([status])
+  @@index([source])
+  @@index([createdAt])
+}
+
+model AuditEvent {
+  id        String   @id @default(cuid())
+  ticketId  String
+  action    String
+  actor     String   @default("system")
+  message   String
+  metadata  Json?
+  createdAt DateTime @default(now())
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@index([createdAt])
+}
