@@ -1,7 +1,22 @@
 {
-  "name": "human-in-the-loop-support-agent",
+  "name": "support-automation-control-center",
   "version": "0.1.0",
   "private": true,
+  "description": "Human-approved AI support automation dashboard with n8n intake, policy-grounded drafts, safety checks, and delivery controls.",
+  "license": "MIT",
+  "packageManager": "pnpm@11.7.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mirasolutions06/support-automation-control-center.git"
+  },
+  "keywords": [
+    "support-automation",
+    "human-in-the-loop",
+    "ai-agents",
+    "nextjs",
+    "n8n",
+    "prisma"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",

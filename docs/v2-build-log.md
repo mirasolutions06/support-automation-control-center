@@ -168,11 +168,12 @@ Current evals:
 - Legal admission block
 - Angry tone block
 - Missing escalation block
+- Urgent positive lead allowed
 
 Expected result:
 
 ```text
-Passed 10 eval cases.
+Passed 11 eval cases.
 ```
 
 The eval runner forces deterministic fallback drafting so it does not call live providers or expose local secrets.

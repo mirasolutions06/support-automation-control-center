@@ -1,8 +1,40 @@
+<div align="center">
+
 # Support Automation Control Center
 
-Human-in-the-loop AI support automation for teams that want faster responses without letting an autonomous bot email customers unchecked.
+**AI drafts support replies. Humans approve before anything is sent.**
 
-The system receives support tickets or sales leads through n8n, stores them in Postgres, drafts a policy-grounded response with Z.ai GLM or Claude, runs safety checks, and stops at a reviewer dashboard for human approval before delivery.
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![CI](https://github.com/mirasolutions06/support-automation-control-center/actions/workflows/ci.yml/badge.svg)](https://github.com/mirasolutions06/support-automation-control-center/actions/workflows/ci.yml)
+![Next.js](https://img.shields.io/badge/Next.js-16-black.svg)
+![Evals](https://img.shields.io/badge/evals-11-brightgreen.svg)
+
+[Setup](docs/setup.md) · [Architecture](docs/architecture.md) · [n8n workflow](n8n/human-in-the-loop-support-agent.workflow.json)
+
+![Dashboard workbench](docs/assets/v2-dashboard-workbench.png)
+
+</div>
+
+## At a glance
+
+This repo is a production-shaped support automation control center. It receives
+support tickets or sales leads, drafts policy-grounded replies with AI, checks
+for risky language, and stops at a reviewer dashboard so a human can edit and
+approve the final message.
+
+The app owns the approval workflow, policy grounding, safety checks, audit trail,
+and delivery state. n8n owns intake from forms, inboxes, helpdesks, or custom
+workflows.
+
+| Path | What it contains |
+| --- | --- |
+| `src/app/` | Next.js dashboard and API routes for tickets, drafts, approvals, and sample data. |
+| `src/lib/` | AI routing, policies, safety checks, validation, storage, email, and shared types. |
+| `prisma/schema.prisma` | Postgres data model for tickets, drafts, audit events, and delivery state. |
+| `data/policies/` | Local policy pack used to ground drafted replies. |
+| `n8n/` | Importable webhook and email-inbox workflows. |
+| `evals/` | Deterministic fixtures for classification, policy grounding, and safety behavior. |
+| `docs/` | Setup, architecture, recording notes, and screenshots. |
 
 ## Overview
 
@@ -13,10 +45,6 @@ This repo is a production-shaped workflow automation template for:
 - AI automation projects that need auditability, policy grounding, and safe delivery controls.
 
 Core outcome: the AI can classify and draft, but a human keeps the final send decision.
-
-## Product Screenshot
-
-![Dashboard workbench](docs/assets/v2-dashboard-workbench.png)
 
 ## Key Capabilities
 
@@ -258,7 +286,7 @@ Current coverage:
 
 - 6 classification, sentiment, priority, and policy grounding cases
 - 4 safety cases for refund promises, legal admissions, angry tone, and missing escalation
-- Expected result: `Passed 10 eval cases.`
+- Expected result: `Passed 11 eval cases.`
 
 Before shipping or deploying:
 
@@ -289,3 +317,8 @@ pnpm evals
 - [Eval fixtures](evals/fixtures/support-tickets.json)
 
 Historical build notes remain in `docs/` for auditability, but this README is the main project entry point.
+
+## License
+
+MIT, see [LICENSE](LICENSE). Use it as a starting point for your own
+human-approved support workflow.
