@@ -322,3 +322,8 @@ Historical build notes remain in `docs/` for auditability, but this README is th
 
 MIT, see [LICENSE](LICENSE). Use it as a starting point for your own
 human-approved support workflow.
+
+## Contact
+
+Built and operated by Mira Solutions, an AI engineering and automation studio.
+mira.solutions06@gmail.com
